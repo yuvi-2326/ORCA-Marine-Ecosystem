@@ -31,9 +31,22 @@ interface SpeechRecognitionInstance {
   continuous: boolean;
   interimResults: boolean;
   lang: string;
+
   start: () => void;
   stop: () => void;
   abort: () => void;
+
+  addEventListener: (
+    type: string,
+    listener: EventListenerOrEventListenerObject
+  ) => void;
+
+  removeEventListener: (
+    type: string,
+    listener: EventListenerOrEventListenerObject
+  ) => void;
+
+  dispatchEvent: (event: Event) => boolean;
 
   onstart: (() => void) | null;
   onend: (() => void) | null;
@@ -68,12 +81,6 @@ function QueryForm({
 }: QueryFormProps) {
   const [question, setQuestion] = useState("");
 
-  /*
-  =========================================================
-  LOCATION
-  =========================================================
-  */
-
   const [locationInput, setLocationInput] =
     useState("Paradip Coast");
 
@@ -96,23 +103,11 @@ function QueryForm({
   const [locationError, setLocationError] =
     useState("");
 
-  /*
-  =========================================================
-  DATE + TIME
-  =========================================================
-  */
-
   const [selectedDate, setSelectedDate] =
     useState(getTodayString());
 
   const [selectedTime, setSelectedTime] =
     useState("06:00");
-
-  /*
-  =========================================================
-  SPEECH
-  =========================================================
-  */
 
   const [isListening, setIsListening] =
     useState(false);
@@ -127,7 +122,7 @@ function QueryForm({
     useState("");
 
   const recognitionRef =
-    useRef<OrcaSpeechRecognition | null>(null);
+    useRef<SpeechRecognitionInstance | null>(null);
 
   const locationSearchTimer =
     useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -266,7 +261,6 @@ function QueryForm({
   /*
   =========================================================
   LOCATION SEARCH
-  OpenStreetMap Nominatim
   =========================================================
   */
 
@@ -321,11 +315,17 @@ function QueryForm({
             await response.json();
 
           const results: LocationResult[] =
-            data.map((item: any) => ({
-              name: item.display_name,
-              latitude: Number(item.lat),
-              longitude: Number(item.lon),
-            }));
+            data.map(
+              (item: {
+                display_name: string;
+                lat: string;
+                lon: string;
+              }) => ({
+                name: item.display_name,
+                latitude: Number(item.lat),
+                longitude: Number(item.lon),
+              })
+            );
 
           setLocationResults(results);
 
@@ -435,7 +435,7 @@ function QueryForm({
           );
         }
 
-        const location = {
+        const location: LocationResult = {
           name: locationName,
           latitude,
           longitude,
@@ -572,10 +572,15 @@ function QueryForm({
   }
 
   function parseTime12(time: string) {
-    const [hourText, minute] = time.split(":");
+    const [hourText, minute] =
+      time.split(":");
+
     const hour24 = Number(hourText);
-    const period = hour24 >= 12 ? "PM" : "AM";
-    const hour12 = hour24 % 12 || 12;
+    const period =
+      hour24 >= 12 ? "PM" : "AM";
+
+    const hour12 =
+      hour24 % 12 || 12;
 
     return {
       hour: String(hour12),
@@ -591,21 +596,35 @@ function QueryForm({
   ) {
     let hour24 = Number(hour);
 
-    if (period === "AM" && hour24 === 12) {
+    if (
+      period === "AM" &&
+      hour24 === 12
+    ) {
       hour24 = 0;
     }
 
-    if (period === "PM" && hour24 !== 12) {
+    if (
+      period === "PM" &&
+      hour24 !== 12
+    ) {
       hour24 += 12;
     }
 
-    return `${String(hour24).padStart(2, "0")}:${minute}`;
+    return `${String(hour24).padStart(
+      2,
+      "0"
+    )}:${minute}`;
   }
 
   function formatTime12(time: string) {
     if (!time) return "Select time";
 
-    const { hour, minute, period } = parseTime12(time);
+    const {
+      hour,
+      minute,
+      period,
+    } = parseTime12(time);
+
     return `${hour}:${minute} ${period}`;
   }
 
@@ -661,15 +680,6 @@ function QueryForm({
       setIsListening(false);
     }
 
-    /*
-      Combine the selected date and time.
-
-      Example:
-      2026-08-31 + 06:30
-      becomes:
-      2026-08-31T06:30
-    */
-
     const datetime =
       `${selectedDate}T${selectedTime}`;
 
@@ -677,15 +687,11 @@ function QueryForm({
 
     onAsk({
       question: cleanedQuestion,
-
       latitude:
         selectedLocation.latitude,
-
       longitude:
         selectedLocation.longitude,
-
       datetime,
-
       locationName:
         selectedLocation.name,
     });
@@ -737,10 +743,6 @@ function QueryForm({
   return (
     <div className="query-form">
 
-      {/* =================================================
-          QUESTION
-      ================================================= */}
-
       <div
         className={`query-input-wrapper ${
           isListening
@@ -748,7 +750,6 @@ function QueryForm({
             : ""
         }`}
       >
-
         <textarea
           value={question}
           onChange={(event) => {
@@ -832,12 +833,7 @@ function QueryForm({
           </button>
 
         </div>
-
       </div>
-
-      {/* =================================================
-          TRY ASKING
-      ================================================= */}
 
       <div className="try-asking">
 
@@ -858,18 +854,15 @@ function QueryForm({
                 disabled={loading}
               >
                 {suggestion}
-                <span aria-hidden="true">→</span>
+                <span aria-hidden="true">
+                  →
+                </span>
               </button>
             )
           )}
 
         </div>
-
       </div>
-
-      {/* =================================================
-          LOCATION
-      ================================================= */}
 
       <div className="location-selector">
 
@@ -982,23 +975,19 @@ function QueryForm({
 
         {locationError && (
           <div className="speech-error">
+
             <span>⚠</span>
 
             <span>
               {locationError}
             </span>
+
           </div>
         )}
 
       </div>
 
-      {/* =================================================
-          DATE + TIME
-      ================================================= */}
-
       <div className="departure-settings">
-
-        {/* DATE */}
 
         <div className="departure-date-field">
 
@@ -1020,8 +1009,6 @@ function QueryForm({
 
         </div>
 
-        {/* TIME */}
-
         <div className="departure-time">
 
           <label htmlFor="departure-time">
@@ -1031,9 +1018,11 @@ function QueryForm({
           <div className="time-picker-row">
 
             {(() => {
-              const current = parseTime12(
-                selectedTime || "06:00"
-              );
+              const current =
+                parseTime12(
+                  selectedTime ||
+                    "06:00"
+                );
 
               const updateTime = (
                 hour: string,
@@ -1054,7 +1043,9 @@ function QueryForm({
                   className="time-picker"
                   aria-label="Departure time"
                 >
-                  <span className="time-picker-icon">🕐</span>
+                  <span className="time-picker-icon">
+                    🕐
+                  </span>
 
                   <select
                     id="departure-time-hour"
@@ -1071,15 +1062,21 @@ function QueryForm({
                   >
                     {Array.from(
                       { length: 12 },
-                      (_, index) => String(index + 1)
+                      (_, index) =>
+                        String(index + 1)
                     ).map((hour) => (
-                      <option key={hour} value={hour}>
+                      <option
+                        key={hour}
+                        value={hour}
+                      >
                         {hour}
                       </option>
                     ))}
                   </select>
 
-                  <span className="time-colon">:</span>
+                  <span className="time-colon">
+                    :
+                  </span>
 
                   <select
                     id="departure-time-minute"
@@ -1094,9 +1091,17 @@ function QueryForm({
                     disabled={loading}
                     aria-label="Minute"
                   >
-                    {["00", "15", "30", "45"].map(
+                    {[
+                      "00",
+                      "15",
+                      "30",
+                      "45",
+                    ].map(
                       (minute) => (
-                        <option key={minute} value={minute}>
+                        <option
+                          key={minute}
+                          value={minute}
+                        >
                           {minute}
                         </option>
                       )
@@ -1116,8 +1121,13 @@ function QueryForm({
                     disabled={loading}
                     aria-label="AM or PM"
                   >
-                    <option value="AM">AM</option>
-                    <option value="PM">PM</option>
+                    <option value="AM">
+                      AM
+                    </option>
+
+                    <option value="PM">
+                      PM
+                    </option>
                   </select>
                 </div>
               );
@@ -1125,13 +1135,13 @@ function QueryForm({
 
             <span className="time-picker-hint">
               {selectedTime
-                ? formatTime12(selectedTime)
+                ? formatTime12(
+                    selectedTime
+                  )
                 : "Choose a time"}
             </span>
 
           </div>
-
-          {/* QUICK TIMES */}
 
           <div className="departure-time-options">
 
@@ -1163,10 +1173,6 @@ function QueryForm({
 
       </div>
 
-      {/* =================================================
-          SPEECH ERROR
-      ================================================= */}
-
       {speechError && (
         <div className="speech-error">
 
@@ -1191,7 +1197,6 @@ function QueryForm({
 
         </div>
       )}
-
 
     </div>
   );
