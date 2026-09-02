@@ -42,7 +42,7 @@ function Navbar() {
       (language) => language.code === selectedLanguage
     ) || LANGUAGES[0];
 
-  function handleLanguageSelect(code) {
+  function handleLanguageSelect(code: string) {
     setSelectedLanguage(code);
 
     try {
